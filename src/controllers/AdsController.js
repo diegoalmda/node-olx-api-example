@@ -36,6 +36,15 @@ module.exports = {
       return res.json({error: 'Título e/ou categoria são obrigatórios'});
     }
 
+    if(cat.length < 12) {
+      return res.json({error: 'ID de categoria inválido'});
+    }
+
+    const category = await Category.findById(cat);
+    if(!category) {
+      return res.json({error: 'Categoria inexistente'});
+    }
+
     if(price) {
       price = price.replace('.', '').replace(',', '.').replace('R$ ', '');
       price = parseFloat(price);
