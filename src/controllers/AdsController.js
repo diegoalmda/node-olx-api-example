@@ -211,6 +211,88 @@ module.exports = {
     });
   },
   editAction: async (req, res) => {
+    let { id } = req.params;
+    let { title, status, price, priceneg, desc, cat, images, token } = req.body;
 
+    if(id.length < 12) {
+      return res.json({error: 'ID inválido'});
+    }
+
+    const ad = await Ad.findById(id).exec();
+    if(!ad) {
+      return res.json({ error: 'Anúncio inexistente' });
+    }
+
+    const user = await User.findOne({token}).exec();
+    if(user._id.toString() !== ad.idUser) {
+      return res.json({ error: 'Este anúncio não é seu' });
+    }
+
+    let updates = {};
+
+    if(title) {
+      updates.title = title;
+    }
+
+    if(price) {
+      price = price.replace('.', '').replace(',', '.').replace('R$ ', '');
+      price = parseFloat(price);
+      updates.price = price;
+    } 
+
+    if(priceneg) {
+      updates.priceNegotiable = priceneg;
+    }
+
+    if(status) {
+      updates.status = status;
+    }
+
+    if(desc) {
+      updates.description = desc;
+    }
+
+    if(cat) {
+      const category = await Category.findOne({slug: cat}).exec();
+      if(!category) {
+        return res.json({ error: 'Categoria inexistente' });
+      }
+      updates.category = category._id.toString();
+    }
+
+    if(images) {
+      updates.images = images;
+    }
+
+    await Ad.findByIdAndUpdate(id, {$set: updates});
+
+    if(req.files && req.files.img) {
+      const adI = await Ad.findById(id);
+
+      if(req.files.img.length == undefined) {
+          if(['image/jpeg', 'image/jpg', 'image/png'].includes(req.files.img.mimetype)) {
+              let url = await addImage(req.files.img.data);
+              adI.images.push({
+                  url,
+                  default: false
+              });
+          }
+      } else {
+          for(let i=0; i < req.files.img.length; i++) {
+              if(['image/jpeg', 'image/jpg', 'image/png'].includes(req.files.img[i].mimetype)) {
+                  let url = await addImage(req.files.img[i].data);
+                  adI.images.push({
+                      url,
+                      default: false
+                  });
+              }
+          }
+      }
+
+      adI.images = [...adI.images];
+      await adI.save();
+    }
+
+    res.json({error: ''});
   },
 };
